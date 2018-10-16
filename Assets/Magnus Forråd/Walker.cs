@@ -13,6 +13,9 @@ public class Walker : MonoBehaviour {
     float leftLegLength, rightLegLength;
     public IkSolver LeftIk, RightIK;
 
+    List<Vector3> leftSteps = new List<Vector3>();
+    List<Vector3> rightSteps = new List<Vector3>();
+    
 
 
     // Use this for initialization
@@ -42,7 +45,7 @@ public class Walker : MonoBehaviour {
         RightFootTarget.Translate(new Vector3(0, -rightLegLength, 0));
 
         //LeftFoot step positions
-        for (int i = 1; i < 10; i += 2)
+        for (int i = 1; i < 20; i += 2)
         {
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
@@ -50,9 +53,11 @@ public class Walker : MonoBehaviour {
             sphere.transform.position = LeftFootTarget.position;
             
             sphere.transform.position -= Vector3.forward * stepLength * i;
+
+            leftSteps.Add(sphere.transform.position);
         }
         //RightFoot step positions
-        for (int i = 2; i < 10; i += 2)
+        for (int i = 2; i < 20; i += 2)
         {
             GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             sphere.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
@@ -60,6 +65,7 @@ public class Walker : MonoBehaviour {
             sphere.transform.position = RightFootTarget.position;
 
             sphere.transform.position -= Vector3.forward * stepLength * i;
+            rightSteps.Add(sphere.transform.position);
         }
 
 
@@ -74,9 +80,90 @@ public class Walker : MonoBehaviour {
         Walk();
 	}
 
-
+    bool leftStepTaken = false;
     void Walk()
     {
+        if (leftStepTaken == false)
+            TakeLeftStep();
+        else
+            TakeRightStep();
+    }
+    bool FootInPos = false;
+    bool bodyInPos = false;
 
+
+    void TakeRightStep()
+    {
+        if (!FootInPos)
+        {
+            RightFootTarget.LookAt(rightSteps[0]);
+
+
+            RightFootTarget.transform.Translate(Vector3.forward * Time.deltaTime);
+            RightFootTarget.transform.Translate(Vector3.up * (Mathf.Sin(Vector3.Normalize((RightFootTarget.position - rightSteps[0])).magnitude) * (stepLength/2)) * Time.deltaTime);
+
+
+
+            if ((RightFootTarget.position - rightSteps[0]).magnitude < 0.05f)
+            {
+                Debug.Log("Step Taken");
+                FootInPos = true;
+            }
+        }
+        else if (!bodyInPos)
+        {
+            transform.Translate(Vector3.forward * -Time.deltaTime);
+
+            if (transform.position.z - RightFootTarget.position.z < 0.05f)
+            {
+                Debug.Log("BOdy moved");
+                bodyInPos = true;
+            }
+        }
+        else
+        {
+
+
+            leftStepTaken = false;
+            FootInPos = false;
+            bodyInPos = false;
+            rightSteps.RemoveAt(0);
+        }
+    }
+    void TakeLeftStep()
+    {
+        if (!FootInPos)
+        {
+            LeftFootTarget.LookAt(leftSteps[0]);
+
+
+            LeftFootTarget.transform.Translate(Vector3.forward * Time.deltaTime);
+            LeftFootTarget.transform.Translate(Vector3.up * (Mathf.Sin(Vector3.Normalize( (LeftFootTarget.position - leftSteps[0])).magnitude)* (stepLength / 2)) * Time.deltaTime);
+
+            if ((LeftFootTarget.position - leftSteps[0]).magnitude < 0.05f)
+            {
+                Debug.Log("Step Taken");
+                FootInPos = true;
+            }
+        }
+        else if (!bodyInPos)
+        {
+            transform.Translate(Vector3.forward * -Time.deltaTime);
+
+            if (transform.position.z - LeftFootTarget.position.z < 0.05f)
+            {
+                Debug.Log("BOdy moved");
+                bodyInPos = true;
+            }
+        }
+        else
+        {
+
+
+            leftStepTaken = true;
+            FootInPos = false;
+            bodyInPos = false;
+            leftSteps.RemoveAt(0);
+        }
     }
 }
