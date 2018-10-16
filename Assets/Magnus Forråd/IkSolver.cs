@@ -56,4 +56,10 @@ public class IkSolver : MonoBehaviour {
         var effectorRotation = Quaternion.LookRotation(tipTarget - effector.position);
         effector.rotation = effectorRotation;
     }
+
+
+    public float GetLegLength()
+    {
+        return upperLength + lowerLength + effectorLength + pivotLength;
+    }
 }
