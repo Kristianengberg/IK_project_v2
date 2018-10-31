@@ -91,16 +91,23 @@ public class Walker : MonoBehaviour {
     bool FootInPos = false;
     bool bodyInPos = false;
 
-
+    float stepProgress = 0;
     void TakeRightStep()
     {
         if (!FootInPos)
         {
-            RightFootTarget.LookAt(rightSteps[0]);
+            //RightFootTarget.LookAt(rightSteps[0]);
 
 
-            RightFootTarget.transform.Translate(Vector3.forward * Time.deltaTime);
-            RightFootTarget.transform.Translate(Vector3.up * (Mathf.Sin(Vector3.Normalize((RightFootTarget.position - rightSteps[0])).magnitude) * (stepLength/2)) * Time.deltaTime);
+            stepProgress += Time.deltaTime;
+
+
+            // RightFootTarget.transform.Translate(Vector3.forward * Time.deltaTime );
+            // RightFootTarget.transform.Translate(Vector3.up * (Mathf.Sin(Vector3.Normalize((RightFootTarget.position - rightSteps[0])).magnitude) * (stepLength / 2)) * Time.deltaTime);
+
+
+            Vector3 tempPos = RightFootTarget.transform.position;
+            RightFootTarget.transform.position = new Vector3(0, Mathf.Sin(stepProgress)*(stepLength/2),Mathf.Cos(stepProgress) * (stepLength / 2));
 
 
 
