@@ -649,6 +649,8 @@ MonoBehaviour:
   lFootTarget: {fileID: 1171905756}
   RightHip: {fileID: 1997232507}
   stepLength: 1.5
+  Weight: 10
+  Legs: 2
   Spline: {fileID: 920339915}
   WillWalk: 1
   rotatePoint: {fileID: 1899203529}

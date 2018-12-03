@@ -9,6 +9,9 @@ public class Walker : MonoBehaviour {
 
     public float stepLength = 0.5f;
 
+    public float Weight = 10;
+    public int Legs = 2;
+
     public BezierSpline Spline;
 
     public bool WillWalk = false;
@@ -22,6 +25,7 @@ public class Walker : MonoBehaviour {
 
     List<Vector3> leftSteps = new List<Vector3>();
     List<Vector3> rightSteps = new List<Vector3>();
+    List<float> stepPositionInSpline = new List<float>();
 
     Vector3 rotationPosition;
 
@@ -73,12 +77,15 @@ public class Walker : MonoBehaviour {
             sphere.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
 
 
+            Debug.Log(i % 2);
+            if (i % 2 == 1)
+            {
+                
+                sphere.transform.position = Spline.GetPoint(0);
+                sphere.transform.LookAt(Spline.GetPoint(0) + Spline.GetDirection(0));
+                sphere.transform.Translate(-0.5f, 0, 0);
             
-               
-            sphere.transform.position = Spline.GetPoint(0);
-            sphere.transform.LookAt(Spline.GetPoint(0)+Spline.GetDirection(0));
-            sphere.transform.Translate(-0.5f, 0, 0);
-
+            
             
             while (true)
             {
@@ -94,10 +101,39 @@ public class Walker : MonoBehaviour {
                 if (CheckedDis > 1)
                     break;
             }
-            
+                stepPositionInSpline.Add(CheckedDis);
+                leftSteps.Add(sphere.transform.position);
+                lastStepPos = sphere.transform.position;
+            }
+            else
+            {
+                sphere.transform.position = Spline.GetPoint(0);
+                sphere.transform.LookAt(Spline.GetPoint(0) + Spline.GetDirection(0));
+                sphere.transform.Translate(0.5f, 0, 0);
 
-            leftSteps.Add(sphere.transform.position);
-            lastStepPos = sphere.transform.position;
+
+                while (true)
+                {
+                    CheckedDis += 0.005f;
+                    sphere.transform.position = Spline.GetPoint(CheckedDis);
+                    sphere.transform.LookAt(Spline.GetPoint(CheckedDis) + Spline.GetDirection(CheckedDis));
+                    sphere.transform.Translate(0.5f, 0, 0);
+
+                    
+
+                    if (Vector3.Distance(lastStepPos, sphere.transform.position) >= stepLength)
+                        break;
+
+                    if (CheckedDis > 1)
+                        break;
+                }
+
+                stepPositionInSpline.Add(CheckedDis);
+                rightSteps.Add(sphere.transform.position);
+                lastStepPos = sphere.transform.position;
+            }
+
+            
 
             
            
@@ -106,6 +142,7 @@ public class Walker : MonoBehaviour {
         lastStepPos = rFootTarget.position;
         bool offset = false;
         //RightFoot step positions
+        /*
         for (int i = 0; i < 20; i++)
         {
 
@@ -149,7 +186,7 @@ public class Walker : MonoBehaviour {
 
 
         }
-
+        */
 
 
 
@@ -189,6 +226,7 @@ public class Walker : MonoBehaviour {
 
             if (firstFrame)
             {
+                transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
                 Vector3 tempPos = lFootTarget.transform.position;
 
                 lFootTarget.GetComponent<Renderer>().material.color = Color.yellow;
@@ -211,7 +249,7 @@ public class Walker : MonoBehaviour {
 
 
 
-            stepProgress -= Time.deltaTime;
+            stepProgress -= Time.deltaTime*1.5f;
 
 
             //rFootTarget.transform.RotateAround(tempFootPos, new Vector3(-1,1,0), 40 *Time.deltaTime);
@@ -233,8 +271,9 @@ public class Walker : MonoBehaviour {
         else if (!bodyInPos)
         {
             bodyProgress += Time.deltaTime / 100;
-            transform.LookAt(new Vector3(Spline.GetPoint(bodyProgress + 0.01f).x, transform.position.y, Spline.GetPoint(bodyProgress + 0.01f).z));
-            transform.position = new Vector3(Spline.GetPoint(bodyProgress).x, transform.position.y, Spline.GetPoint(bodyProgress).z);
+            //transform.LookAt(new Vector3(Spline.GetPoint(bodyProgress + 0.01f).x, transform.position.y, Spline.GetPoint(bodyProgress + 0.01f).z));
+            transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
+            transform.Translate(Vector3.forward * Time.deltaTime);
 
 
 
@@ -246,6 +285,7 @@ public class Walker : MonoBehaviour {
                 Debug.Log("BOdy moved");
                 bodyInPos = true;
                 prevDistance = 0;
+                
             }
             if (bodyInPos == false)
                 prevDistance = number;
@@ -253,7 +293,7 @@ public class Walker : MonoBehaviour {
         else
         {
 
-
+            stepPositionInSpline.RemoveAt(0);
             leftStepTaken = false;
             FootInPos = false;
             bodyInPos = false;
@@ -272,6 +312,7 @@ public class Walker : MonoBehaviour {
 
             if (firstFrame)
             {
+                transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
                 Vector3 tempPos = rFootTarget.transform.position;
 
                 rFootTarget.GetComponent<Renderer>().material.color = Color.yellow;
@@ -294,7 +335,7 @@ public class Walker : MonoBehaviour {
 
 
 
-            stepProgress -= Time.deltaTime;
+            stepProgress -= Time.deltaTime * 1.5f;
 
 
             //rFootTarget.transform.RotateAround(tempFootPos, new Vector3(-1,1,0), 40 *Time.deltaTime);
@@ -315,9 +356,11 @@ public class Walker : MonoBehaviour {
         else if (!bodyInPos)
         {
             bodyProgress += Time.deltaTime/100;
-            transform.LookAt(new Vector3(Spline.GetPoint(bodyProgress + 0.01f).x,transform.position.y, Spline.GetPoint(bodyProgress+0.01f).z));
-            transform.position = new Vector3(Spline.GetPoint(bodyProgress).x, transform.position.y, Spline.GetPoint(bodyProgress).z);
-
+            //transform.LookAt(new Vector3(Spline.GetPoint(bodyProgress + 0.01f).x,transform.position.y, Spline.GetPoint(bodyProgress+0.01f).z));
+            transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
+            //transform.position = new Vector3(Spline.GetPoint(bodyProgress).x, transform.position.y, Spline.GetPoint(bodyProgress).z);
+            transform.Translate(Vector3.forward * Time.deltaTime);
+            
 
 
             float number = Vector3.Distance(transform.position, rFootTarget.position);
@@ -336,7 +379,7 @@ public class Walker : MonoBehaviour {
         else
         {
 
-
+            stepPositionInSpline.RemoveAt(0);
             leftStepTaken = true;
             FootInPos = false;
             bodyInPos = false;
