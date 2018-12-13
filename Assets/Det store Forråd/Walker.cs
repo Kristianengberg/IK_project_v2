@@ -4,35 +4,56 @@ using UnityEngine;
 
 public class Walker : MonoBehaviour {
 
-    public Transform rFootTarget,LeftHip;
-    public Transform lFootTarget,RightHip;
+  
 
     public float stepLength = 0.5f;
+    public float legSpeed = 1;
+
+    public float Uprightness = 1;
 
     public float Weight = 10;
-    public int Legs = 2;
+    public List<IkSolver> legs = new List<IkSolver>();
+    Transform[] targets;
+    float[] legOffsets;
 
     public BezierSpline Spline;
 
     public bool WillWalk = false;
 
+    public float NoiseX = 0.2f, NoiseY = 0.3f, NoiseZ = 0.4f;
 
-    public GameObject rotatePoint;
+    public BezierSpline stepTracjectory;
+    
 
+    
 
-    float leftLegLength, rightLegLength;
-    public IkSolver LeftIk, RightIK;
+   
+    
 
-    List<Vector3> leftSteps = new List<Vector3>();
-    List<Vector3> rightSteps = new List<Vector3>();
+    List<Vector3> Steps = new List<Vector3>();
+    
     List<float> stepPositionInSpline = new List<float>();
 
-    Vector3 rotationPosition;
+    
 
     // Use this for initialization
     void Start () {
-        leftLegLength = LeftIk.GetLegLength();
-        rightLegLength = RightIK.GetLegLength();
+
+        transform.position = new Vector3(0, 5, 0);
+        legOffsets = new float[legs.Count];
+        for (int i = 0; i < legOffsets.Length; i++)
+        {
+
+            legOffsets[i] = legs[i % legs.Count].transform.position.x - transform.position.x;
+            
+
+            
+
+        }
+
+        
+        targets = new Transform[legs.Count];
+
         
 
         RaycastHit hit;
@@ -51,25 +72,36 @@ public class Walker : MonoBehaviour {
         if (Physics.Raycast(transform.position, Vector3.down, out hit, 100, layerMask))
         {
             Vector3 pos = hit.transform.position;
-            pos.y += ((leftLegLength + rightLegLength) / 2)+0.1f;
+            pos.y += legs[0].GetLegLength()* Uprightness;
             pos.z = transform.position.z;
             pos.x = transform.position.x;
             transform.position = pos;
         }
-        
-        
 
-        rFootTarget.position = LeftHip.position;
-        rFootTarget.Translate(new Vector3(0, -leftLegLength, 0));
 
-        lFootTarget.position = RightHip.position;
-        lFootTarget.Translate(new Vector3(0, -rightLegLength, 0));
+
+        for (int i = 0; i < targets.Length; i++)
+        {
+            targets[i] = new GameObject().transform;
+
+            legs[i].target = targets[i];
+            targets[i].position = legs[i].transform.position;
+            targets[i].position = new Vector3(targets[i].position.x, targets[i].position.y - (legs[i].GetLegLength() * Uprightness), targets[i].position.z);
+
+        }
+
+        
 
         //LeftFoot step positions
         
         float CheckedDis = 0;
-        Vector3 lastStepPos = lFootTarget.position;
-        for (int i = 0; i < 20; i++)
+        Vector3 lastStepPos = targets[0].position;
+
+
+        //the big step meister
+        bool  done = false;
+        int denstoretælleleg = 0;
+        while (! done)
         {
 
 
@@ -77,13 +109,11 @@ public class Walker : MonoBehaviour {
             sphere.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
 
 
-            Debug.Log(i % 2);
-            if (i % 2 == 1)
-            {
-                
+            //Debug.Log(i % 2);
+            
                 sphere.transform.position = Spline.GetPoint(0);
                 sphere.transform.LookAt(Spline.GetPoint(0) + Spline.GetDirection(0));
-                sphere.transform.Translate(-0.5f, 0, 0);
+                sphere.transform.Translate(legOffsets[denstoretælleleg % legs.Count], 0, 0);
             
             
             
@@ -92,102 +122,29 @@ public class Walker : MonoBehaviour {
                 CheckedDis += 0.005f;
                 sphere.transform.position = Spline.GetPoint(CheckedDis);
                 sphere.transform.LookAt(Spline.GetPoint(CheckedDis) + Spline.GetDirection(CheckedDis));
-                sphere.transform.Translate(-0.5f, 0, 0);
+                sphere.transform.Translate(legOffsets[denstoretælleleg % legs.Count], 0, 0);
                 
 
                 if(Vector3.Distance(lastStepPos,sphere.transform.position)>=stepLength)
                     break;
 
                 if (CheckedDis > 1)
-                    break;
-            }
-                stepPositionInSpline.Add(CheckedDis);
-                leftSteps.Add(sphere.transform.position);
-                lastStepPos = sphere.transform.position;
-            }
-            else
-            {
-                sphere.transform.position = Spline.GetPoint(0);
-                sphere.transform.LookAt(Spline.GetPoint(0) + Spline.GetDirection(0));
-                sphere.transform.Translate(0.5f, 0, 0);
-
-
-                while (true)
                 {
-                    CheckedDis += 0.005f;
-                    sphere.transform.position = Spline.GetPoint(CheckedDis);
-                    sphere.transform.LookAt(Spline.GetPoint(CheckedDis) + Spline.GetDirection(CheckedDis));
-                    sphere.transform.Translate(0.5f, 0, 0);
-
+                    done = true;
+                    break;
                     
-
-                    if (Vector3.Distance(lastStepPos, sphere.transform.position) >= stepLength)
-                        break;
-
-                    if (CheckedDis > 1)
-                        break;
                 }
-
-                stepPositionInSpline.Add(CheckedDis);
-                rightSteps.Add(sphere.transform.position);
-                lastStepPos = sphere.transform.position;
             }
-
-            
-
-            
+                stepPositionInSpline.Add(CheckedDis);
+                Steps.Add(sphere.transform.position);
+                lastStepPos = sphere.transform.position;
+            denstoretælleleg++;
+            Destroy(sphere);
            
         }
         CheckedDis = 0;
-        lastStepPos = rFootTarget.position;
-        bool offset = false;
-        //RightFoot step positions
-        /*
-        for (int i = 0; i < 20; i++)
-        {
-
-
-            GameObject sphere = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            sphere.transform.localScale = new Vector3(0.5f, 0.5f, 0.5f);
-
-
-
-
-            sphere.transform.position = Spline.GetPoint(0);
-            sphere.transform.LookAt(Spline.GetPoint(0) + Spline.GetDirection(0));
-            sphere.transform.Translate(0.5f, 0, 0);
-
-
-            while (true)
-            {
-                CheckedDis += 0.005f;
-                sphere.transform.position = Spline.GetPoint(CheckedDis);
-                sphere.transform.LookAt(Spline.GetPoint(CheckedDis) + Spline.GetDirection(CheckedDis));
-                sphere.transform.Translate(0.5f, 0, 0);
-
-                if(offset == false && Vector3.Distance(lastStepPos, sphere.transform.position) >= stepLength/2)
-                {
-                    
-                    offset = true;
-                    break;
-                }
-
-                else if (Vector3.Distance(lastStepPos, sphere.transform.position) >= stepLength)
-                    break;
-
-                if (CheckedDis > 1)
-                    break;
-            }
-            
-
-            rightSteps.Add(sphere.transform.position);
-            lastStepPos = sphere.transform.position;
-
-
-
-        }
-        */
-
+        
+        
 
 
     }
@@ -202,13 +159,16 @@ public class Walker : MonoBehaviour {
     bool leftStepTaken = false;
 
 
-
+    int currentStep = 0;
     void Walk()
     {
+        TakeStep();
+        /*
         if (leftStepTaken == false)
             TakeLeftStep();
         else
             TakeRightStep();
+        */
     }
     bool FootInPos = false;
     bool bodyInPos = false;
@@ -218,93 +178,13 @@ public class Walker : MonoBehaviour {
 
     Vector3 tempFootPos;
     bool firstFrame = true;
-    float stepProgress = Mathf.PI;
-    void TakeRightStep()
-    {
-        if (!FootInPos)
-        {
-
-            if (firstFrame)
-            {
-                transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
-                Vector3 tempPos = lFootTarget.transform.position;
-
-                lFootTarget.GetComponent<Renderer>().material.color = Color.yellow;
-
-                Debug.Log(leftSteps[0]);
-                lFootTarget.transform.LookAt(leftSteps[0]);
-
-
-                currentStepLength = Vector3.Distance(lFootTarget.transform.position, leftSteps[0]);
-                lFootTarget.transform.Translate(Vector3.forward * currentStepLength / 2);
-                tempFootPos = lFootTarget.transform.position;
-
-                rotatePoint.transform.position = tempFootPos;
-
-                lFootTarget.transform.position = tempPos;
-                rotatttin = lFootTarget.transform.rotation;
-
-                firstFrame = false;
-            }
-
-
-
-            stepProgress -= Time.deltaTime*1.5f;
-
-
-            //rFootTarget.transform.RotateAround(tempFootPos, new Vector3(-1,1,0), 40 *Time.deltaTime);
-            //rFootTarget.transform.position = tempFootPos + new Vector3(0, Mathf.Sin(stepProgress) * (currentStepLength), Mathf.Cos(stepProgress) * (currentStepLength));
-
-            lFootTarget.position = tempFootPos;
-            lFootTarget.Translate(new Vector3(0, Mathf.Sin(stepProgress) * (currentStepLength / 2), Mathf.Cos(stepProgress) * (currentStepLength / 2)));
-
-
-
-            if ((lFootTarget.position - leftSteps[0]).magnitude < 0.05f)
-            {
-                Debug.Log("Step Taken");
-                firstFrame = true;
-                stepProgress = Mathf.PI;
-                FootInPos = true;
-            }
-        }
-        else if (!bodyInPos)
-        {
-            bodyProgress += Time.deltaTime / 100;
-            //transform.LookAt(new Vector3(Spline.GetPoint(bodyProgress + 0.01f).x, transform.position.y, Spline.GetPoint(bodyProgress + 0.01f).z));
-            transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
-            transform.Translate(Vector3.forward * Time.deltaTime);
-
-
-
-            float number = Vector3.Distance(transform.position, lFootTarget.position);
-
-
-            if (prevDistance < number && prevDistance != 0)
-            {
-                Debug.Log("BOdy moved");
-                bodyInPos = true;
-                prevDistance = 0;
-                
-            }
-            if (bodyInPos == false)
-                prevDistance = number;
-        }
-        else
-        {
-
-            stepPositionInSpline.RemoveAt(0);
-            leftStepTaken = false;
-            FootInPos = false;
-            bodyInPos = false;
-            leftSteps.RemoveAt(0);
-        }
-    }
+    float stepProgress = 0;
+    
 
     float currentStepLength = 0;
     float prevDistance =0;
     Quaternion rotatttin;
-    void TakeLeftStep()
+    void TakeStep()
     {
         
         if (!FootInPos)
@@ -312,69 +192,70 @@ public class Walker : MonoBehaviour {
 
             if (firstFrame)
             {
-                transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
-                Vector3 tempPos = rFootTarget.transform.position;
+                
+                //transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
 
-                rFootTarget.GetComponent<Renderer>().material.color = Color.yellow;
+                
+                
+                
+               
 
-                Debug.Log(rightSteps[0]);
-                rFootTarget.transform.LookAt(rightSteps[0]);
-
-
-                currentStepLength = Vector3.Distance(rFootTarget.transform.position, rightSteps[0]);
-                rFootTarget.transform.Translate(Vector3.forward * currentStepLength / 2);
-                tempFootPos = rFootTarget.transform.position;
-
-                rotatePoint.transform.position = tempFootPos;
-
-                rFootTarget.transform.position = tempPos;
-                rotatttin = rFootTarget.transform.rotation;
+                stepTracjectory.points[0] = targets[currentStep].position;
+                stepTracjectory.points[1] = targets[currentStep].position + new Vector3(0 + Random.Range(-NoiseX, NoiseX), 1 + Random.Range(-NoiseY, NoiseY), 0 + Random.Range(-NoiseZ, NoiseZ));
+                stepTracjectory.points[2] = Steps[0] + new Vector3(0 + Random.Range(-NoiseX, NoiseX), 1 + Random.Range(-NoiseY, NoiseY), 0 + Random.Range(-NoiseZ, NoiseZ));
+                stepTracjectory.points[3] = Steps[0];
 
                 firstFrame = false;
             }
 
+            //Debug.Log(stepProgress);
 
-
-            stepProgress -= Time.deltaTime * 1.5f;
+            stepProgress += Time.deltaTime * legSpeed;
 
 
             //rFootTarget.transform.RotateAround(tempFootPos, new Vector3(-1,1,0), 40 *Time.deltaTime);
             //rFootTarget.transform.position = tempFootPos + new Vector3(0, Mathf.Sin(stepProgress) * (currentStepLength), Mathf.Cos(stepProgress) * (currentStepLength));
 
-            rFootTarget.position = tempFootPos;
-            rFootTarget.Translate(new Vector3(0, Mathf.Sin(stepProgress) * (currentStepLength/2), Mathf.Cos(stepProgress) * (currentStepLength / 2)));
+            //rFootTarget.position = tempFootPos;
+            //rFootTarget.Translate(new Vector3(0, Mathf.Sin(stepProgress) * (currentStepLength/2), Mathf.Cos(stepProgress) * (currentStepLength / 2)));
+
+            targets[currentStep].position = stepTracjectory.GetPoint(stepProgress);
             
 
-            if ((rFootTarget.position - rightSteps[0]).magnitude < 0.05f)
+            //if ((targets[currentStep].position - Steps[0]).magnitude < 0.05f)
+            if(targets[currentStep].position == stepTracjectory.GetPoint(1))
             {
-                Debug.Log("Step Taken");
+                //Debug.Log("Step Taken");
                 firstFrame = true;
-                stepProgress = Mathf.PI;
+                stepProgress = 0;
                 FootInPos = true;
+                
             }
         }
         else if (!bodyInPos)
         {
             bodyProgress += Time.deltaTime/100;
             //transform.LookAt(new Vector3(Spline.GetPoint(bodyProgress + 0.01f).x,transform.position.y, Spline.GetPoint(bodyProgress+0.01f).z));
+            
             transform.LookAt(new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z));
             //transform.position = new Vector3(Spline.GetPoint(bodyProgress).x, transform.position.y, Spline.GetPoint(bodyProgress).z);
             transform.Translate(Vector3.forward * Time.deltaTime);
             
 
 
-            float number = Vector3.Distance(transform.position, rFootTarget.position);
+            
 
             
-            if (prevDistance<number && prevDistance != 0)
+            //if (prevDistance<number && prevDistance != 0)
+            if(Vector3.Distance( transform.position, new Vector3(Spline.GetPoint(stepPositionInSpline[0]).x, transform.position.y, Spline.GetPoint(stepPositionInSpline[0]).z))<0.1)
             {
-                Debug.Log("BOdy moved");
+               // Debug.Log("BOdy moved");
                 bodyInPos = true;
-                prevDistance = 0;
+                
                 
             }
-            if(bodyInPos== false)
-            prevDistance = number;
+            
+            
         }
         else
         {
@@ -383,7 +264,8 @@ public class Walker : MonoBehaviour {
             leftStepTaken = true;
             FootInPos = false;
             bodyInPos = false;
-            rightSteps.RemoveAt(0);
+            Steps.RemoveAt(0);
+            currentStep = (currentStep + 1) % legs.Count;
         }
     }
 }
